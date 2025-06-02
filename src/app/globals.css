@@ -1,0 +1,84 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 250 249 246;
+    --foreground: 255 255 255;
+    --card: 255 255 255;
+    --card-foreground: 255 255 255;
+    --popover: 255 255 255;
+    --popover-foreground: 255 255 255;
+    --primary: 250 218 221;
+    --primary-foreground: 255 255 255;
+    --secondary: 163 177 138;
+    --secondary-foreground: 255 255 255;
+    --muted: 216 167 177;
+    --muted-foreground: 255 255 255;
+    --accent: 226 194 144;
+    --accent-foreground: 255 255 255;
+    --destructive: 220 38 38;
+    --destructive-foreground: 250 250 250;
+    --border: 226 194 144;
+    --input: 226 194 144;
+    --ring: 226 194 144;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 47 47 47;
+    --foreground: 255 255 255;
+    --card: 47 47 47;
+    --card-foreground: 255 255 255;
+    --popover: 47 47 47;
+    --popover-foreground: 255 255 255;
+    --primary: 250 218 221;
+    --primary-foreground: 255 255 255;
+    --secondary: 163 177 138;
+    --secondary-foreground: 255 255 255;
+    --muted: 216 167 177;
+    --muted-foreground: 255 255 255;
+    --accent: 226 194 144;
+    --accent-foreground: 255 255 255;
+    --destructive: 220 38 38;
+    --destructive-foreground: 250 250 250;
+    --border: 226 194 144;
+    --input: 226 194 144;
+    --ring: 226 194 144;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-[hsl(var(--border))];
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@font-face {
+  font-family: 'PhotoWall';
+  src: url('/fonts/PhotoWall_Sans_Shadow_by_DearType/PhotoWallSansShadow-Regular.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+.font-photowall {
+  font-family: 'PhotoWall', cursive;
+}
+
+@font-face {
+  font-family: 'Mr Dafoe';
+  src: url('/fonts/Cormorant_Garamond,Great_Vibes,Mr_Dafoe,Playfair_Display/Mr_Dafoe/MrDafoe-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+.font-dafoe {
+  font-family: 'Mr Dafoe', cursive;
+}
