@@ -5,8 +5,8 @@ import Link from 'next/link'
 
 export default function Home() {
   return (
-    <BackgroundImage image="/bg1.jpg">
-      <div className="min-h-screen flex flex-col justify-center items-center px-2 py-4 sm:px-4 sm:py-16">
+    <BackgroundImage image="/bg4.jpg">
+      <div className="h-full flex flex-col justify-center items-center px-2 py-4 sm:px-4 sm:py-16">
         <div className="w-full max-w-4xl flex flex-col flex-1 justify-center items-center text-center gap-2">
           {/* Names and Rings */}
           <h1 className="mb-4 flex flex-col items-center gap-1 text-5xl sm:text-7xl md:text-8xl font-dafoe text-white leading-tight">

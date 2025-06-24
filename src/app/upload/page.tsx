@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRef, useState, useEffect } from 'react'
+import { toast } from 'sonner'
 
 interface PreviewFile {
   file: File
@@ -15,9 +16,27 @@ interface PreviewFile {
 export default function UploadPage() {
   const [previewFiles, setPreviewFiles] = useState<PreviewFile[]>([])
   const [dragActive, setDragActive] = useState(false)
-  const [showUploaded, setShowUploaded] = useState(false)
-  const [confetti, setConfetti] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [uploadedCount, setUploadedCount] = useState(0)
+  const [totalFiles, setTotalFiles] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Test storage bucket connection
+  useEffect(() => {
+    async function testStorage() {
+      try {
+        const { data, error } = await supabase.storage.from('images').list('', { limit: 1 })
+        if (error) {
+          alert(`Storage bucket error: ${error.message}`)
+          toast.error(`Storage bucket error: ${error.message}`)
+        }
+      } catch (err) {
+        // Silent error handling
+      }
+    }
+    testStorage()
+  }, [])
 
   function handleFiles(files: FileList | null) {
     if (!files) return
@@ -26,8 +45,10 @@ export default function UploadPage() {
       url: URL.createObjectURL(file),
     }))
     setPreviewFiles(previews)
-    setShowUploaded(false)
-    setConfetti(false)
+    setUploading(false)
+    setUploadProgress(0)
+    setUploadedCount(0)
+    setTotalFiles(0)
   }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -58,6 +79,11 @@ export default function UploadPage() {
   }
 
   async function handleUpload() {
+    setUploading(true)
+    setTotalFiles(previewFiles.length)
+    setUploadedCount(0)
+    setUploadProgress(0)
+
     // Animate out all images
     const previews = document.querySelectorAll('.preview-image')
     previews.forEach((el, i) => {
@@ -66,22 +92,41 @@ export default function UploadPage() {
         ;(el as HTMLElement).style.transform = 'scale(0.8)'
       }, i * 80)
     })
+    
     // Remove from state after animation
     setTimeout(() => {
       setPreviewFiles([])
-      setShowUploaded(true)
-      setConfetti(true)
-      setTimeout(() => setConfetti(false), 1800)
     }, previews.length * 80 + 400)
     
-    previewFiles.forEach(async (preview) => {
+    // Start uploads in background with error handling
+    let successCount = 0
+    let errorCount = 0
+    let completedCount = 0
+    
+    await Promise.all(previewFiles.map(async (preview) => {
       const file = preview.file
       
+      // Validate file size (max 10MB)
       if (file.size > 10 * 1024 * 1024) {
+        const message = `File ${file.name} is too large: ${(file.size / (1024 * 1024)).toFixed(1)}MB. Maximum size is 10MB.`
+        alert(message)
+        toast.error(message)
+        errorCount++
+        completedCount++
+        setUploadedCount(completedCount)
+        setUploadProgress((completedCount / previewFiles.length) * 100)
         return
       }
       
+      // Validate file type
       if (!file.type.startsWith('image/')) {
+        const message = `File ${file.name} is not a valid image file.`
+        alert(message)
+        toast.error(message)
+        errorCount++
+        completedCount++
+        setUploadedCount(completedCount)
+        setUploadProgress((completedCount / previewFiles.length) * 100)
         return
       }
       
@@ -95,12 +140,58 @@ export default function UploadPage() {
         })
         
         if (error) {
-          alert(`Failed to upload ${file.name}: ${error.message}`)
+          let message = `Failed to upload ${file.name}: ${error.message}`
+          if (error.message.includes('413')) {
+            message = `File ${file.name} is too large for the server. Try compressing the image.`
+          } else if (error.message.includes('network')) {
+            message = `Network error uploading ${file.name}. Please check your internet connection and try again.`
+          }
+          alert(message)
+          toast.error(message)
+          errorCount++
+        } else {
+          toast.success(`${file.name} uploaded successfully!`)
+          successCount++
         }
       } catch (err) {
-        alert(`Failed to upload ${file.name}: ${err}`)
+        let message = `Failed to upload ${file.name}: ${err}`
+        if (err instanceof TypeError && err.message.includes('Failed to fetch')) {
+          message = `Network connection error uploading ${file.name}. Please check your internet connection and try again.`
+        }
+        alert(message)
+        toast.error(message)
+        errorCount++
       }
-    })
+      
+      completedCount++
+      setUploadedCount(completedCount)
+      setUploadProgress((completedCount / previewFiles.length) * 100)
+    }))
+    
+    // Show summary toast
+    if (successCount > 0 && errorCount === 0) {
+      toast.success(`All ${successCount} photos uploaded successfully! 🎉`)
+      // Invalidate gallery cache so it refreshes when user visits gallery
+      if (typeof window !== 'undefined' && (window as any).invalidateGalleryCache) {
+        (window as any).invalidateGalleryCache()
+      }
+    } else if (successCount > 0 && errorCount > 0) {
+      toast.warning(`${successCount} photos uploaded, ${errorCount} failed`)
+      // Invalidate gallery cache even if some uploads failed
+      if (typeof window !== 'undefined' && (window as any).invalidateGalleryCache) {
+        (window as any).invalidateGalleryCache()
+      }
+    } else if (errorCount > 0) {
+      toast.error(`All ${errorCount} uploads failed`)
+    }
+    
+    // Reset upload state after a short delay
+    setTimeout(() => {
+      setUploading(false)
+      setUploadProgress(0)
+      setUploadedCount(0)
+      setTotalFiles(0)
+    }, 2000)
   }
 
   return (
@@ -141,7 +232,7 @@ export default function UploadPage() {
                   Select Photos
                 </label>
               </Button>
-              {previewFiles.length > 0 && (
+              {previewFiles.length > 0 && !uploading && (
                 <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
                   {previewFiles.map((preview, idx) => (
                     <div key={idx} className="relative flex flex-col items-center preview-image transition-all duration-300" style={{ opacity: 1, transform: 'scale(1)' }}>
@@ -159,15 +250,31 @@ export default function UploadPage() {
                   ))}
                 </div>
               )}
-              {previewFiles.length > 0 && (
+              {previewFiles.length > 0 && !uploading && (
                 <Button className="mt-4 w-full sm:w-auto" onClick={handleUpload}>
                   Upload Selected
                 </Button>
               )}
-              {showUploaded && (
-                <div className="mt-6 flex flex-col items-center">
-                  <span className="text-green-400 font-cormorant text-lg">Uploaded!</span>
-                  {confetti && <span className="text-2xl animate-bounce">🎉</span>}
+              {uploading && (
+                <div className="mt-6 flex flex-col items-center space-y-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                    <span className="text-white font-cormorant text-lg">
+                      Uploading photos...
+                    </span>
+                  </div>
+                  <div className="w-full max-w-md">
+                    <div className="flex justify-between text-sm text-white/80 mb-2">
+                      <span>{uploadedCount} of {totalFiles} completed</span>
+                      <span>{Math.round(uploadProgress)}%</span>
+                    </div>
+                    <div className="w-full bg-white/20 rounded-full h-2">
+                      <div 
+                        className="bg-accent h-2 rounded-full transition-all duration-300 ease-out"
+                        style={{ width: `${uploadProgress}%` }}
+                      ></div>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
