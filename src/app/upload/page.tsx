@@ -5,7 +5,7 @@ import { BackgroundImage } from '@/components/ui/background-image'
 import { supabase } from '@/lib/supabase'
 import Image from 'next/image'
 import Link from 'next/link'
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 
 interface PreviewFile {
   file: File
@@ -73,12 +73,33 @@ export default function UploadPage() {
       setConfetti(true)
       setTimeout(() => setConfetti(false), 1800)
     }, previews.length * 80 + 400)
-    // Start uploads in background
+    
     previewFiles.forEach(async (preview) => {
       const file = preview.file
+      
+      if (file.size > 10 * 1024 * 1024) {
+        return
+      }
+      
+      if (!file.type.startsWith('image/')) {
+        return
+      }
+      
       const fileExt = file.name.split('.').pop()
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${fileExt}`
-      await supabase.storage.from('images').upload(fileName, file)
+      
+      try {
+        const { data, error } = await supabase.storage.from('images').upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false
+        })
+        
+        if (error) {
+          alert(`Failed to upload ${file.name}: ${error.message}`)
+        }
+      } catch (err) {
+        alert(`Failed to upload ${file.name}: ${err}`)
+      }
     })
   }
 

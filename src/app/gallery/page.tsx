@@ -3,12 +3,13 @@ import { Button } from '@/components/ui/button'
 import { BackgroundImage } from '@/components/ui/background-image'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
-import { useEffect, useState, useRef } from 'react'
-import PhotoAlbum from 'react-photo-album'
+import { useEffect, useState, useRef, Suspense } from 'react'
 import { format, isToday, isYesterday, parseISO } from 'date-fns'
 import Lightbox from 'yet-another-react-lightbox'
 import 'yet-another-react-lightbox/styles.css'
-import { ArrowLeft, ArrowRight, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, X, MoreVertical, Share2, Download } from 'lucide-react'
+import Image from 'next/image'
+import { useSearchParams } from 'next/navigation'
 
 interface GalleryImage {
   src: string
@@ -30,14 +31,97 @@ function groupByDate(images: GalleryImage[]) {
   return groups
 }
 
-export default function GalleryPage() {
+function GalleryCard({ imageUrl, imageName, onImageClick }: { imageUrl: string, imageName: string, onImageClick: () => void }) {
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  const handleDownload = async () => {
+    try {
+      const response = await fetch(imageUrl)
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = imageName
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+    } catch (err) {
+      alert('Failed to download image.')
+      console.error(err)
+    }
+  }
+
+  const handleWhatsAppShare = async () => {
+    const shareUrl = `${window.location.origin}/gallery?photo=${encodeURIComponent(imageName)}`
+    const text = `Check out this photo! ${shareUrl}`
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`
+    window.open(whatsappUrl, '_blank')
+  }
+
+  const handleInstagramShare = async () => {
+    const shareUrl = `${window.location.origin}/gallery?photo=${encodeURIComponent(imageName)}`
+    window.open('https://www.instagram.com/', '_blank')
+    await navigator.clipboard.writeText(shareUrl)
+    alert('Photo link copied to clipboard! Paste it in your Instagram post.')
+  }
+
+  const handleShare = async () => {
+    const shareUrl = `${window.location.origin}/gallery?photo=${encodeURIComponent(imageName)}`
+    if (navigator.share) {
+      await navigator.share({ url: shareUrl, title: `Photo: ${imageName}` })
+    } else {
+      await navigator.clipboard.writeText(shareUrl)
+      alert('Photo link copied to clipboard!')
+    }
+  }
+
+  return (
+    <div className="relative group">
+      <img 
+        src={imageUrl} 
+        alt={imageName} 
+        className="rounded-lg w-full h-24 sm:h-28 md:h-32 object-cover mx-auto cursor-pointer" 
+        onClick={onImageClick}
+      />
+      <button
+        className="absolute top-2 right-2 bg-black/60 text-white rounded-full p-1 z-20"
+        onClick={(e) => {
+          e.stopPropagation()
+          setMenuOpen(!menuOpen)
+        }}
+        aria-label="Open menu"
+      >
+        <MoreVertical size={20} />
+      </button>
+      {menuOpen && (
+        <div className="absolute top-10 right-2 bg-white rounded shadow-lg z-30 min-w-[48px] flex flex-col items-center py-2">
+          <button onClick={handleDownload} className="block p-2 hover:bg-gray-100 rounded-full" title="Download">
+            <Download size={20} />
+          </button>
+          <button onClick={handleWhatsAppShare} className="block p-2 hover:bg-gray-100 rounded-full" title="Share on WhatsApp">
+            <Image src="/whatsapp.png" alt="WhatsApp" width={30} height={30} />
+          </button>
+          <button onClick={handleInstagramShare} className="block p-2 hover:bg-gray-100 rounded-full" title="Share on Instagram">
+            <Image src="/ig.png" alt="Instagram" width={20} height={20} />
+          </button>
+          <button onClick={handleShare} className="block p-2 hover:bg-gray-100 rounded-full" title="Share (Other)">
+            <Share2 size={20} />
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function GalleryContent() {
   const [images, setImages] = useState<GalleryImage[]>([])
   const [loading, setLoading] = useState(true)
   const [activeDate, setActiveDate] = useState<string>('')
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [lightboxIndex, setLightboxIndex] = useState(0)
   const dateRefs = useRef<Record<string, HTMLDivElement | null>>({})
-  const albumContainerRef = useRef<HTMLDivElement>(null)
+  const searchParams = useSearchParams()
 
   useEffect(() => {
     async function fetchImages() {
@@ -77,17 +161,21 @@ export default function GalleryPage() {
             })
         )
         setImages(imagesWithMeta)
+        
+        // Check if a specific photo is being shared and open it
+        const sharedPhoto = searchParams.get('photo')
+        if (sharedPhoto) {
+          const photoIndex = imagesWithMeta.findIndex(img => img.name === sharedPhoto)
+          if (photoIndex !== -1) {
+            setLightboxIndex(photoIndex)
+            setLightboxOpen(true)
+          }
+        }
       }
       setLoading(false)
     }
     fetchImages()
-  }, [])
-
-  useEffect(() => {
-    if (albumContainerRef.current) {
-      console.log('PhotoAlbum container width:', albumContainerRef.current.offsetWidth)
-    }
-  }, [images])
+  }, [searchParams])
 
   // Group images by date
   const grouped = groupByDate(images)
@@ -117,6 +205,14 @@ export default function GalleryPage() {
 
   // Flatten images for lightbox navigation
   const flatImages = dateLabels.flatMap(label => grouped[label])
+
+  const openLightbox = (imageUrl: string) => {
+    const index = flatImages.findIndex(img => img.src === imageUrl)
+    if (index !== -1) {
+      setLightboxIndex(index)
+      setLightboxOpen(true)
+    }
+  }
 
   return (
     <BackgroundImage image="/bg3.jpg">
@@ -156,7 +252,12 @@ export default function GalleryPage() {
                 />
               ))}
             </div>
-            {/* Masonry grid by date */}
+            <div className="mb-4 flex justify-left">
+              <Link href="/" className="text-white hover:text-accent transition-colors">
+                <ArrowLeft className="w-6 h-6" />
+              </Link>
+            </div>
+            {/* Gallery grid by date */}
             {dateLabels.map(label => (
               <div key={label} ref={el => {
                 if (el) {
@@ -166,22 +267,17 @@ export default function GalleryPage() {
                 <div className="mb-4 font-cormorant text-white/80 text-xl">{label}</div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-4">
                   {grouped[label].map((img, idx) => (
-                    <div key={idx} className="bg-white/10 rounded-xl border border-white/20 overflow-hidden p-1 sm:p-2 cursor-pointer hover:shadow-lg transition-all duration-200">
-                      <img
-                        src={img.src}
-                        alt="gallery"
-                        className="rounded-lg shadow-md hover:scale-105 transition-transform duration-200 w-full h-24 sm:h-28 md:h-32 object-cover mx-auto"
-                        onClick={() => {
-                          setLightboxIndex(flatImages.findIndex(i => i.src === img.src))
-                          setLightboxOpen(true)
-                        }}
-                      />
-                    </div>
+                    <GalleryCard 
+                      key={idx} 
+                      imageUrl={img.src} 
+                      imageName={img.name}
+                      onImageClick={() => openLightbox(img.src)}
+                    />
                   ))}
                 </div>
               </div>
             ))}
-            {/* Lightbox modal */}
+            {/* Lightbox modal with swipe support */}
             {lightboxOpen && (
               <Lightbox
                 open={lightboxOpen}
@@ -189,9 +285,9 @@ export default function GalleryPage() {
                 slides={flatImages.map(img => ({ src: img.src }))}
                 index={lightboxIndex}
                 render={{
-                  iconPrev: () => <span className="text-4xl text-white">&lt;</span>,
-iconNext: () => <span className="text-4xl text-white">&gt;</span>,
-                  iconClose: () => <ArrowLeft className="w-10 h-10 text-white" />, 
+                  iconPrev: () => <ArrowLeft className="w-8 h-8 text-white" />,
+                  iconNext: () => <ArrowRight className="w-8 h-8 text-white" />,
+                  iconClose: () => <X className="w-8 h-8 text-white" />, 
                 }}
                 on={{
                   view: ({ index }) => setLightboxIndex(index),
@@ -199,19 +295,27 @@ iconNext: () => <span className="text-4xl text-white">&gt;</span>,
                 styles={{
                   container: { background: 'rgba(0,0,0,0.95)' },
                   navigationPrev: { left: 16, top: '50%', transform: 'translateY(-50%)' },
-                  navigationNext: { right: 16, top: '50%', transform: 'translateY(-50%)' },
-                  close: { left: 16, top: 16, right: 'auto' }
+                  navigationNext: { right: 16, top: '50%', transform: 'translateY(-50%)' }
+                }}
+                carousel={{
+                  finite: false,
+                  preload: 2,
+                  spacing: 0,
+                  padding: 0,
                 }}
               />
             )}
           </div>
         )}
-        <div className="mt-12 flex justify-center">
-          <Button asChild variant="outline" className="border-white/30 text-white hover:bg-white/10 font-playfair">
-            <Link href="/">Back to Home</Link>
-          </Button>
-        </div>
       </div>
     </BackgroundImage>
+  )
+}
+
+export default function GalleryPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-black flex items-center justify-center text-white">Loading gallery...</div>}>
+      <GalleryContent />
+    </Suspense>
   )
 } 
