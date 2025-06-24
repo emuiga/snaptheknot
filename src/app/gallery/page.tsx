@@ -81,7 +81,7 @@ function GalleryCard({ imageUrl, imageName, onImageClick }: { imageUrl: string, 
       <img 
         src={imageUrl} 
         alt={imageName} 
-        className="rounded-lg w-full h-24 sm:h-28 md:h-32 object-cover mx-auto cursor-pointer" 
+        className="rounded-lg w-full h-32 sm:h-40 md:h-48 object-cover mx-auto cursor-pointer" 
         onClick={onImageClick}
       />
       <button
