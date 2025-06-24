@@ -285,8 +285,6 @@ function GalleryContent() {
                 slides={flatImages.map(img => ({ src: img.src }))}
                 index={lightboxIndex}
                 render={{
-                  iconPrev: () => <ArrowLeft className="w-8 h-8 text-white" />,
-                  iconNext: () => <ArrowRight className="w-8 h-8 text-white" />,
                   iconClose: () => <X className="w-8 h-8 text-white" />, 
                 }}
                 on={{
@@ -294,8 +292,6 @@ function GalleryContent() {
                 }}
                 styles={{
                   container: { background: 'rgba(0,0,0,0.95)' },
-                  navigationPrev: { left: 16, top: '50%', transform: 'translateY(-50%)' },
-                  navigationNext: { right: 16, top: '50%', transform: 'translateY(-50%)' }
                 }}
                 carousel={{
                   finite: false,
