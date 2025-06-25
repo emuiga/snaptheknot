@@ -1,6 +1,5 @@
 "use client"
 import { Button } from '@/components/ui/button'
-import { BackgroundImage } from '@/components/ui/background-image'
 import { supabase } from '@/lib/supabase'
 import { getCachedImages, setCachedImages } from '@/lib/galleryCache'
 import Link from 'next/link'
@@ -234,7 +233,7 @@ function GalleryContent({ initialImages }: { initialImages: GalleryImage[] }) {
   }
 
   return (
-    <BackgroundImage image="/bg1.jpg">
+    <div className="h-full bg-black">
       <div className="w-screen px-2 py-8 sm:px-8 sm:py-16 relative">
         <div className="mb-12 flex flex-col items-center gap-4 sm:flex-row sm:justify-between">
           <h1 className="font-playfair text-4xl font-bold text-white sm:text-5xl">
@@ -255,7 +254,7 @@ function GalleryContent({ initialImages }: { initialImages: GalleryImage[] }) {
         ) : (
           <div className="relative">
             {activeDate && (
-              <div className="fixed top-20 right-4 z-30 bg-black/70 text-white px-3 py-1 rounded-lg font-cormorant text-base sm:text-lg shadow-lg sm:top-24 sm:right-8">
+              <div className="fixed top-24 right-4 z-30 bg-black/70 text-white px-3 py-1 rounded-lg font-cormorant text-base sm:text-lg shadow-lg sm:top-28 sm:right-8">
                 {activeDate}
               </div>
             )}
@@ -340,7 +339,7 @@ function GalleryContent({ initialImages }: { initialImages: GalleryImage[] }) {
           </div>
         )}
       </div>
-    </BackgroundImage>
+    </div>
   )
 }
 
