@@ -26,7 +26,7 @@ export default function Home() {
 
           {/* Welcome Message */}
           <p className="mx-auto max-w-xs sm:max-w-2xl font-cormorant text-base sm:text-xl text-white/80 mb-4">
-            Welcome to our wedding photo sharing platform. Share your special moments with us and help us capture memories that last a lifetime.
+            Welcome to Esther & Edward's photo album. Capture and share special moments and memories that last a lifetime.
           </p>
 
           {/* Action Buttons */}

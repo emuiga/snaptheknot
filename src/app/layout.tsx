@@ -23,7 +23,7 @@ const cormorant = Cormorant_Garamond({
 });
 
 export const metadata: Metadata = {
-  title: "SnapTheKnot - Wedding Photo Sharing",
+  title: "The Muganes",
   description: "Share and view photos from Esther & Edward's wedding celebration",
 };
 
