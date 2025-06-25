@@ -103,12 +103,12 @@ function LightboxMenu({ imageUrl, imageName }: { imageUrl: string, imageName: st
 
 function GalleryCard({ imageUrl, imageName, onImageClick }: { imageUrl: string, imageName: string, onImageClick: () => void }) {
   const [menuOpen, setMenuOpen] = useState(false)
-  const [imageLoaded, setImageLoaded] = useState(false)
-  const [imageError, setImageError] = useState(false)
 
   const handleDownload = async () => {
     try {
-      const response = await fetch(imageUrl)
+      // Get the original full-size image for download
+      const originalUrl = imageUrl.split('?')[0] // Remove transform parameters
+      const response = await fetch(originalUrl)
       const blob = await response.blob()
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
@@ -151,58 +151,42 @@ function GalleryCard({ imageUrl, imageName, onImageClick }: { imageUrl: string, 
   return (
     <div className="relative">
       <div className="relative overflow-hidden rounded-lg mb-1">
-        {!imageLoaded && !imageError && (
-          <div className="w-full h-32 sm:h-40 md:h-48 bg-white/10 animate-pulse rounded-lg flex items-center justify-center">
-            <div className="w-8 h-8 border-2 border-white/30 border-t-white/60 rounded-full animate-spin"></div>
-          </div>
-        )}
-        {imageError && (
-          <div className="w-full h-32 sm:h-40 md:h-48 bg-white/10 rounded-lg flex items-center justify-center text-white/60 text-sm">
-            Failed to load
-          </div>
-        )}
         <img 
           src={imageUrl} 
           alt={imageName} 
-          className={`rounded-lg w-full h-32 sm:h-40 md:h-48 object-cover mx-auto cursor-pointer transition-opacity duration-300 ${
-            imageLoaded ? 'opacity-100' : 'opacity-0 absolute inset-0'
-          }`}
+          className="rounded-lg w-full h-32 sm:h-40 md:h-48 object-cover mx-auto cursor-pointer"
           loading="lazy"
-          onLoad={() => setImageLoaded(true)}
-          onError={() => setImageError(true)}
-          onClick={imageLoaded ? onImageClick : undefined}
+          onClick={onImageClick}
         />
       </div>
-      {imageLoaded && (
-        <div className="flex justify-end">
-          <button
-            className="text-white/80 hover:text-white transition-colors p-1"
-            onClick={(e) => {
-              e.stopPropagation()
-              setMenuOpen(!menuOpen)
-            }}
-            aria-label="Open menu"
-          >
-            <MoreHorizontal size={16} />
-          </button>
-          {menuOpen && (
-            <div className="absolute bottom-0 right-0 bg-white rounded shadow-lg z-30 min-w-[48px] flex flex-col items-center py-2">
-              <button onClick={handleDownload} className="block p-2 hover:bg-gray-100 rounded-full" title="Download">
-                <Download size={20} />
-              </button>
-              <button onClick={handleWhatsAppShare} className="block p-2 hover:bg-gray-100 rounded-full" title="Share on WhatsApp">
-                <Image src="/whatsapp.png" alt="WhatsApp" width={30} height={30} />
-              </button>
-              <button onClick={handleInstagramShare} className="block p-2 hover:bg-gray-100 rounded-full" title="Share on Instagram">
-                <Image src="/ig.png" alt="Instagram" width={20} height={20} />
-              </button>
-              <button onClick={handleShare} className="block p-2 hover:bg-gray-100 rounded-full" title="Share (Other)">
-                <Share2 size={20} />
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+      <div className="flex justify-end">
+        <button
+          className="text-white/80 hover:text-white transition-colors p-1"
+          onClick={(e) => {
+            e.stopPropagation()
+            setMenuOpen(!menuOpen)
+          }}
+          aria-label="Open menu"
+        >
+          <MoreHorizontal size={16} />
+        </button>
+        {menuOpen && (
+          <div className="absolute bottom-0 right-0 bg-white rounded shadow-lg z-30 min-w-[48px] flex flex-col items-center py-2">
+            <button onClick={handleDownload} className="block p-2 hover:bg-gray-100 rounded-full" title="Download">
+              <Download size={20} />
+            </button>
+            <button onClick={handleWhatsAppShare} className="block p-2 hover:bg-gray-100 rounded-full" title="Share on WhatsApp">
+              <Image src="/whatsapp.png" alt="WhatsApp" width={30} height={30} />
+            </button>
+            <button onClick={handleInstagramShare} className="block p-2 hover:bg-gray-100 rounded-full" title="Share on Instagram">
+              <Image src="/ig.png" alt="Instagram" width={20} height={20} />
+            </button>
+            <button onClick={handleShare} className="block p-2 hover:bg-gray-100 rounded-full" title="Share (Other)">
+              <Share2 size={20} />
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -259,10 +243,12 @@ function GalleryContent() {
       const imagesWithMeta: GalleryImage[] = data
         .filter((item) => item.name.match(/\.(jpg|jpeg|png|gif)$/i))
         .map((item) => {
-          const url = supabase.storage.from('images').getPublicUrl(item.name).data.publicUrl
-          // Use default dimensions - let CSS handle the layout
+          // Use Supabase transform to get optimized thumbnail for gallery
+          const baseUrl = supabase.storage.from('images').getPublicUrl(item.name).data.publicUrl
+          const optimizedUrl = `${baseUrl}?width=400&height=300&resize=cover&quality=80`
+          
           return {
-            src: url,
+            src: optimizedUrl,
             width: 600,
             height: 400, // Default aspect ratio
             date: item.created_at || new Date().toISOString(),
